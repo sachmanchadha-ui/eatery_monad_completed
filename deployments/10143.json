@@ -1,0 +1,15 @@
+{
+  "chainId": 10143,
+  "address": "0x83edd38e28e43c608c0d30b60a03adac1eacbc33",
+  "deployBlock": 67786289,
+  "txHash": "0x6ac6b12af835ab54ef28cb78d27dd6034d433b3941037b5ed07fcd1e68a3d382",
+  "deployer": "0x0460E464485db2D2c26bD9B785D3847A0176110F",
+  "openSec": 25200,
+  "cutoffSec": 32400,
+  "roles": {
+    "attester": "0x207Ee6E5C2269975C0c51F50A0cE9cf99b9987d4",
+    "refunder": "0xF40f8264C1B3F4b6f2aE165011d75066d2a3d932",
+    "relayer": "0xCFa9bE7f624b695E66A3905860dc33CB59D95E2f"
+  },
+  "deployedAt": "2026-10-03T08:52:06.854Z"
+}

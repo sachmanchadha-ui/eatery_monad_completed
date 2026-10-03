@@ -1,0 +1,20 @@
+{
+  "name": "@canteenpos/ops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "gen-keys": "node src/cli/gen-keys.ts",
+    "deploy": "node src/cli/deploy.ts",
+    "fund": "node src/cli/fund.ts",
+    "smoke": "node src/cli/smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@canteenpos/sdk": "*",
+    "viem": "^2.57.2"
+  }
+}

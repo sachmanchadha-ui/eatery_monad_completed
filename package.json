@@ -1,0 +1,12 @@
+{
+  "name": "canteenpos",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:contracts": "cd contracts && forge build",
+    "test:contracts": "cd contracts && forge test",
+    "test:sdk": "npm run test -w @canteenpos/sdk"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+.env
+.env.*
+tools/v2-offline-signing/.cert/
+tools/v2-offline-signing/results.jsonl
+.data/

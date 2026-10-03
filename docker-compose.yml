@@ -1,0 +1,23 @@
+# Local Postgres for the indexer and backend. Dev only: bound to localhost, throwaway credentials.
+#   docker compose up -d
+#   DATABASE_URL=postgres://canteen:canteen@127.0.0.1:5433/canteen
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: canteen-postgres
+    environment:
+      POSTGRES_USER: canteen
+      POSTGRES_PASSWORD: canteen
+      POSTGRES_DB: canteen
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - canteen-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U canteen -d canteen"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  canteen-pg:

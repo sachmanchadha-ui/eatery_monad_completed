@@ -1,0 +1,26 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 10_000
+via_ir = true
+fs_permissions = [{ access = "read", path = "../config" }]
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+[fuzz]
+runs = 1000
+
+[invariant]
+runs = 128
+depth = 64
+fail_on_revert = true
+show_metrics = true
+
+[rpc_endpoints]
+monad_testnet = "https://testnet-rpc.monad.xyz"

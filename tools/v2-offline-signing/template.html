@@ -1,0 +1,454 @@
+<title>Offline Signing Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one phone-width column, a live status strip, four real steps in order, then the shared results log. */
+:root {
+  color-scheme: dark;
+  --canvas: #141211;
+  --surface: #1E1A18;
+  --surface-2: #282320;
+  --line: #3A322D;
+  --cream: #F5E6D3;
+  --cream-muted: #C4A584;
+  --cream-dim: #7E7063;
+  --crail: #C15F3C;
+  --orange: #E67D22;
+  --peach: #FFB38A;
+  --ok: #5E9E74;
+  --bad: #D9534F;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px;
+}
+html, body { background: var(--canvas); color: var(--cream); }
+body { font: 15px/1.55 var(--sans); padding-inline: 16px; padding-block: 20px 48px; }
+main { max-width: 560px; margin: 0 auto; display: grid; gap: 22px; }
+h1, h2 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 2rem; line-height: 1.1; }
+h2 { font-size: 1.2rem; }
+p { margin: 0; }
+.eyebrow { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--crail); }
+.lede { color: var(--cream-muted); max-width: 60ch; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--cream-dim); }
+.small { font-size: 0.82rem; }
+
+.strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font: 500 0.78rem/1 var(--mono); color: var(--cream-muted); background: var(--surface); }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cream-dim); }
+.pill.ok::before { background: var(--ok); }
+.pill.bad::before { background: var(--bad); }
+.pill.warn::before { background: var(--orange); }
+.pill.net { font-size: 0.85rem; padding: 7px 12px; }
+.pill.net.offline { border-color: var(--ok); color: var(--cream); }
+
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+.step { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.step-head { display: flex; align-items: baseline; gap: 10px; }
+.step-head::before { content: counter(step); font: 500 0.8rem/1 var(--mono); color: var(--peach); border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; }
+.step p { color: var(--cream-muted); }
+
+button { font: 600 0.92rem/1 var(--sans); color: var(--cream); background: var(--crail); border: 0; border-radius: 8px; padding: 12px 16px; cursor: pointer; justify-self: start; }
+button.quiet { background: var(--surface-2); border: 1px solid var(--line); color: var(--cream-muted); font-weight: 500; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--peach); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+input[type=text] { font: 0.95rem var(--sans); color: var(--cream); background: var(--canvas); border: 1px solid var(--line); border-radius: 8px; padding: 11px 12px; flex: 1 1 200px; min-width: 0; }
+input::placeholder { color: var(--cream-dim); }
+
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; margin: 0; }
+.kv dt { color: var(--cream-muted); min-width: 0; }
+.kv dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.chip { font: 600 0.72rem/1 var(--mono); letter-spacing: 0.06em; padding: 4px 7px; border-radius: 5px; }
+.chip.pass { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.chip.fail { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); }
+.chip.warn { background: color-mix(in srgb, var(--orange) 22%, transparent); color: var(--orange); }
+.verdict { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; font-weight: 500; }
+.verdict.pass { border-color: var(--ok); }
+.verdict.fail { border-color: var(--bad); }
+.verdict.warn { border-color: var(--orange); }
+.addr { font: 0.8rem var(--mono); color: var(--peach); overflow-wrap: anywhere; }
+.msg { font-size: 0.85rem; color: var(--cream-muted); min-height: 1.2em; }
+.msg.err { color: var(--bad); }
+
+.log { display: grid; gap: 10px; }
+.run { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.run-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.run-name { font-weight: 600; }
+.run-meta { font: 0.78rem var(--mono); color: var(--cream-dim); overflow-wrap: anywhere; }
+.empty { color: var(--cream-dim); font-size: 0.9rem; }
+footer { color: var(--cream-dim); font-size: 0.8rem; max-width: 60ch; }
+@media (prefers-reduced-motion: no-preference) { .pill::before { transition: background 0.2s; } }
+</style>
+
+<main>
+  <header style="display:grid;gap:10px">
+    <span class="eyebrow">CanteenPOS · check V2</span>
+    <h1>Offline Signing Check</h1>
+    <p class="lede">At the counter the student's phone signs a check-in with its session key, often in a basement with no signal. This page runs that signing on your phone with the network off and checks the bytes against the contract-verified SDK.</p>
+    <div class="strip" aria-live="polite">
+      <span id="net" class="pill net">Checking network</span>
+      <span id="env-secure" class="pill">Secure context</span>
+      <span id="env-crypto" class="pill">WebCrypto</span>
+      <span id="env-idb" class="pill">IndexedDB</span>
+    </div>
+  </header>
+
+  <ol class="steps">
+    <li class="step">
+      <div class="step-head"><h2>Create a session key</h2></div>
+      <p>Generates a secp256k1 key, encrypts it with a non-extractable AES-GCM key, and stores both in this phone's IndexedDB. Do this once, with the network on or off.</p>
+      <div class="row">
+        <button id="btn-create" type="button">Create session key</button>
+        <button id="btn-reset" type="button" class="quiet" hidden>Replace key</button>
+      </div>
+      <div id="key-info" class="small dim">No session key on this phone yet.</div>
+    </li>
+
+    <li class="step">
+      <div class="step-head"><h2>Turn on airplane mode</h2></div>
+      <p>Switch off Wi-Fi and mobile data. The network pill at the top turns green and reads <span class="mono">Offline</span>. Keep this page open; don't reload it.</p>
+    </li>
+
+    <li class="step">
+      <div class="step-head"><h2>Run the signing test</h2></div>
+      <p>Reloads the key from IndexedDB, decrypts it, signs a check-in, verifies a tablet signature, and counts any network requests made while it runs.</p>
+      <button id="btn-run" type="button" disabled>Run signing test</button>
+      <div id="results" hidden>
+        <dl class="kv" id="kv"></dl>
+        <p id="verdict" class="verdict" style="margin-top:12px"></p>
+      </div>
+    </li>
+
+    <li class="step">
+      <div class="step-head"><h2>Save the result</h2></div>
+      <p>Turn the network back on, name this phone, and save. Results from every phone collect in the log below, and Claude reads them from there.</p>
+      <div class="row">
+        <label for="label" class="small dim" style="flex-basis:100%">Phone model</label>
+        <input id="label" type="text" placeholder="e.g. Redmi 12C, iPhone 13" maxlength="60" autocomplete="off">
+        <button id="btn-save" type="button" disabled>Save result</button>
+      </div>
+      <p id="save-msg" class="msg" aria-live="polite"></p>
+    </li>
+  </ol>
+
+  <section style="display:grid;gap:12px">
+    <h2>Results by phone</h2>
+    <div id="log" class="log"><p class="empty">No saved runs yet. Each phone you test appears here after step 4.</p></div>
+  </section>
+
+  <footer>This checks signing with no network. Loading the app itself while offline needs the installed PWA and is tested in P4, along with how long iOS Safari keeps site data. Test keys on this page never touch the chain.</footer>
+</main>
+
+<script>/*NOBLE*/</script>
+<script>
+(() => {
+  const KAT = /*KAT*/;
+  const { secp256k1, keccak_256 } = window.Noble;
+  const $ = (id) => document.getElementById(id);
+  const te = new TextEncoder();
+
+  // ---------- bytes and EIP-712 (mirrors packages/sdk/src/eip712.ts) ----------
+  const hex = (b) => '0x' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  const unhex = (h) => {
+    h = h.replace(/^0x/, '');
+    const o = new Uint8Array(h.length / 2);
+    for (let i = 0; i < o.length; i++) o[i] = parseInt(h.substr(i * 2, 2), 16);
+    return o;
+  };
+  const concat = (...parts) => {
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  };
+  const k = (b) => keccak_256(b);
+  const word = (bytes) => { const w = new Uint8Array(32); w.set(bytes, 32 - bytes.length); return w; };
+  const uint = (n) => { let v = BigInt(n); const w = new Uint8Array(32); for (let i = 31; i >= 0; i--) { w[i] = Number(v & 255n); v >>= 8n; } return w; };
+  const addr = (a) => word(unhex(a));
+
+  const TYPE = {
+    domain: k(te.encode('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')),
+    challenge: k(te.encode('DeviceChallenge(address device,uint8 slotId,bytes32 nonce,uint48 timestamp)')),
+    checkIn: k(te.encode('CheckIn(uint256 orderId,bytes32 challengeHash)')),
+  };
+  const domainSeparator = (chainId, vc) =>
+    k(concat(TYPE.domain, k(te.encode('CanteenOrders')), k(te.encode('1')), uint(chainId), addr(vc)));
+  const challengeHash = (c) => k(concat(TYPE.challenge, addr(c.device), uint(c.slotId), unhex(c.nonce), uint(c.timestamp)));
+  const typed = (ds, structHash) => k(concat(Uint8Array.of(0x19, 0x01), ds, structHash));
+  const checkInDigest = (ds, orderId, cHash) => typed(ds, k(concat(TYPE.checkIn, uint(orderId), cHash)));
+
+  const sign = (digest, priv) => {
+    const s = secp256k1.sign(digest, priv); // RFC 6979, low-s, same as viem
+    return concat(s.toCompactRawBytes(), Uint8Array.of(27 + s.recovery));
+  };
+  const addressOf = (pubUncompressed) => hex(k(pubUncompressed.slice(1)).slice(12));
+  const recover = (digest, sig) => {
+    const s = secp256k1.Signature.fromCompact(sig.slice(0, 64)).addRecoveryBit(sig[64] - 27);
+    return addressOf(s.recoverPublicKey(digest).toRawBytes(false));
+  };
+
+  // ---------- IndexedDB ----------
+  const openDb = () => new Promise((res, rej) => {
+    const r = indexedDB.open('canteen-v2', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('keys');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  const idbGet = async (key) => {
+    const db = await openDb();
+    return new Promise((res, rej) => {
+      const r = db.transaction('keys').objectStore('keys').get(key);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  };
+  const idbPut = async (key, value) => {
+    const db = await openDb();
+    return new Promise((res, rej) => {
+      const t = db.transaction('keys', 'readwrite');
+      t.objectStore('keys').put(value, key);
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    });
+  };
+
+  // ---------- network watch ----------
+  let requests = 0;
+  try {
+    new PerformanceObserver((list) => { requests += list.getEntries().length; }).observe({ type: 'resource', buffered: false });
+  } catch {}
+  const origFetch = window.fetch;
+  window.fetch = function (...a) { requests++; return origFetch.apply(this, a); };
+  const origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (...a) { requests++; return origOpen.apply(this, a); };
+
+  const renderNet = () => {
+    const on = navigator.onLine;
+    const el = $('net');
+    el.textContent = on ? 'Online' : 'Offline';
+    el.className = 'pill net ' + (on ? 'warn' : 'ok offline');
+  };
+  window.addEventListener('online', renderNet);
+  window.addEventListener('offline', renderNet);
+  renderNet();
+
+  const setPill = (id, ok, label) => { const el = $(id); el.classList.add(ok ? 'ok' : 'bad'); if (label) el.textContent = label; };
+  const env = {
+    secure: window.isSecureContext,
+    crypto: !!(window.crypto && crypto.subtle),
+    idb: typeof indexedDB !== 'undefined',
+  };
+  setPill('env-secure', env.secure);
+  setPill('env-crypto', env.crypto);
+  setPill('env-idb', env.idb);
+
+  // ---------- step 1: create key ----------
+  let keyRecord = null;
+  const fmtDate = (t) => new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const renderKey = () => {
+    const info = $('key-info');
+    if (!keyRecord) {
+      info.textContent = 'No session key on this phone yet.';
+      $('btn-create').hidden = false; $('btn-reset').hidden = true; $('btn-run').disabled = true;
+      return;
+    }
+    const age = Math.floor((Date.now() - keyRecord.createdAt) / 86400000);
+    info.innerHTML = '';
+    const a = document.createElement('div'); a.className = 'addr'; a.textContent = keyRecord.address;
+    const m = document.createElement('div'); m.className = 'small dim';
+    m.textContent = 'Created ' + fmtDate(keyRecord.createdAt) + (age > 0 ? ' (' + age + ' days ago, still stored)' : '') +
+      ' · wrapping key extractable: ' + (keyRecord.wrapKey.extractable ? 'yes' : 'no');
+    info.append(a, m);
+    $('btn-create').hidden = true; $('btn-reset').hidden = false; $('btn-run').disabled = false;
+  };
+
+  const createKey = async () => {
+    const priv = secp256k1.utils.randomPrivateKey();
+    const wrapKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, priv));
+    const address = addressOf(secp256k1.getPublicKey(priv, false));
+    priv.fill(0);
+    keyRecord = { wrapKey, iv, ct, address, createdAt: Date.now() };
+    await idbPut('session', keyRecord);
+    renderKey();
+  };
+  const onCreate = async (btn) => {
+    btn.disabled = true;
+    try { await createKey(); } catch (e) { $('key-info').textContent = 'Could not create a key: ' + (e && e.message || e); }
+    btn.disabled = false;
+  };
+  $('btn-create').addEventListener('click', (e) => onCreate(e.currentTarget));
+  $('btn-reset').addEventListener('click', (e) => onCreate(e.currentTarget));
+
+  // ---------- step 3: run ----------
+  let lastResult = null;
+  const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+
+  const runTest = async () => {
+    const offline = !navigator.onLine;
+    const before = requests;
+    const ds = domainSeparator(KAT.domain.chainId, KAT.domain.verifyingContract);
+
+    // A. known answers: phone hashing and signing must equal the SDK byte for byte
+    const cHash = challengeHash(KAT.challenge);
+    const digest = checkInDigest(ds, KAT.orderId, cHash);
+    const katSig = hex(sign(digest, unhex(KAT.sessionKey)));
+    const katHash = hex(cHash) === KAT.challengeHash && hex(digest) === KAT.checkInDigest;
+    const katSign = katSig === KAT.checkInSig;
+
+    // B. tablet signature verified locally (protocol step 3)
+    const deviceOk = recover(typed(ds, cHash), unhex(KAT.deviceSig)) === KAT.challenge.device.toLowerCase();
+
+    // C. this phone's own key: reload from IndexedDB, decrypt, sign, recover
+    const t0 = performance.now();
+    const rec = await idbGet('session');
+    const priv = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: rec.iv }, rec.wrapKey, rec.ct));
+    const t1 = performance.now();
+    const sig = sign(digest, priv);
+    const t2 = performance.now();
+    const ownOk = recover(digest, sig) === rec.address;
+    const times = [];
+    for (let i = 0; i < 20; i++) { const s = performance.now(); sign(digest, priv); times.push(performance.now() - s); }
+    priv.fill(0);
+
+    // D. response QR payload size (spec 7.3)
+    const payload = JSON.stringify({ v: 1, orderId: KAT.orderId, challenge: { ...KAT.challenge, deviceSig: KAT.deviceSig }, studentSig: hex(sig) });
+
+    await new Promise((r) => setTimeout(r, 300)); // let the observer flush any late entries
+    const net = requests - before;
+
+    lastResult = {
+      offline, katHash, katSign, deviceOk, ownOk,
+      networkRequests: net,
+      decryptMs: +(t1 - t0).toFixed(1),
+      signMs: +(t2 - t1).toFixed(1),
+      signMedianMs: +median(times).toFixed(2),
+      payloadBytes: te.encode(payload).length,
+      keyAgeDays: Math.floor((Date.now() - rec.createdAt) / 86400000),
+      wrapKeyExtractable: rec.wrapKey.extractable,
+      ranAt: Date.now(),
+    };
+    try { localStorage.setItem('v2-last', JSON.stringify(lastResult)); } catch {}
+    renderResult();
+  };
+
+  const chip = (state, text) => { const c = document.createElement('span'); c.className = 'chip ' + state; c.textContent = text; return c; };
+  const renderResult = () => {
+    const r = lastResult;
+    if (!r) return;
+    const rows = [
+      ['Hashes match the SDK', chip(r.katHash ? 'pass' : 'fail', r.katHash ? 'PASS' : 'FAIL')],
+      ['Known-answer signature matches', chip(r.katSign ? 'pass' : 'fail', r.katSign ? 'PASS' : 'FAIL')],
+      ['Tablet signature verified on phone', chip(r.deviceOk ? 'pass' : 'fail', r.deviceOk ? 'PASS' : 'FAIL')],
+      ['Own key reloaded, decrypted, signed', chip(r.ownOk ? 'pass' : 'fail', r.ownOk ? 'PASS' : 'FAIL')],
+      ['Phone was offline', chip(r.offline ? 'pass' : 'warn', r.offline ? 'YES' : 'NO')],
+      ['Network requests during test', chip(r.networkRequests === 0 ? 'pass' : 'fail', String(r.networkRequests))],
+      ['Decrypt key', r.decryptMs + ' ms'],
+      ['Sign check-in (median of 20)', r.signMedianMs + ' ms'],
+      ['Response QR payload', r.payloadBytes + ' bytes'],
+    ];
+    const kv = $('kv');
+    kv.innerHTML = '';
+    for (const [label, val] of rows) {
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd');
+      if (typeof val === 'string') dd.textContent = val; else dd.append(val);
+      kv.append(dt, dd);
+    }
+    const allPass = r.katHash && r.katSign && r.deviceOk && r.ownOk && r.networkRequests === 0;
+    const v = $('verdict');
+    if (!allPass) { v.className = 'verdict fail'; v.textContent = 'V2 failed on this phone. Save the result so the failing check is on record.'; }
+    else if (!r.offline) { v.className = 'verdict warn'; v.textContent = 'Signing works, but the phone was online. Turn on airplane mode and run the test again.'; }
+    else { v.className = 'verdict pass'; v.textContent = 'V2 passed on this phone: it signed a check-in with no network.'; }
+    $('results').hidden = false;
+    $('btn-save').disabled = false;
+  };
+  $('btn-run').addEventListener('click', async (e) => {
+    const b = e.currentTarget; b.disabled = true;
+    try { await runTest(); }
+    catch (err) { $('verdict').className = 'verdict fail'; $('verdict').textContent = 'The test stopped with an error: ' + (err && err.message || err); $('results').hidden = false; }
+    b.disabled = false;
+  });
+
+  // ---------- step 4 and log: shared results via the db capability ----------
+  let store = null; // { save(run) }: claude.ai db, or the local HTTPS server (serve.mjs)
+  const saveMsg = (text, err) => { const m = $('save-msg'); m.textContent = text; m.className = 'msg' + (err ? ' err' : ''); };
+  const env2 = () => ({
+    userAgent: navigator.userAgent,
+    standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+    secureContext: env.secure,
+  });
+  $('btn-save').addEventListener('click', async (e) => {
+    if (!lastResult) return;
+    const label = $('label').value.trim();
+    if (!label) { saveMsg('Enter the phone model first.', true); $('label').focus(); return; }
+    if (!navigator.onLine) { saveMsg('The phone is still offline. Turn the network back on, then save.', true); return; }
+    if (!store) { saveMsg('Saving is unavailable in this view. Copy the numbers above instead.', true); return; }
+    const b = e.currentTarget; b.disabled = true;
+    try {
+      await store.save({ label, ...lastResult, ...env2(), savedAt: Date.now() });
+      saveMsg('Saved. Run it on the next phone.');
+    } catch (err) {
+      saveMsg(err && err.code === 'invalid_argument' ? 'You don\'t have permission to save results on this page.' : 'Could not save: ' + (err && err.message || err) + '. Try again.', true);
+      b.disabled = false;
+    }
+  });
+
+  const renderLog = (snap) => {
+    const log = $('log');
+    log.innerHTML = '';
+    if (snap.empty) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No saved runs yet. Each phone you test appears here after step 4.'; log.append(p); return; }
+    for (const d of snap.docs) {
+      const r = d.data();
+      const pass = r.katHash && r.katSign && r.deviceOk && r.ownOk && r.networkRequests === 0;
+      const state = !pass ? 'fail' : r.offline ? 'pass' : 'warn';
+      const div = document.createElement('div'); div.className = 'run';
+      const head = document.createElement('div'); head.className = 'run-head';
+      const name = document.createElement('span'); name.className = 'run-name'; name.textContent = r.label || 'Unnamed phone';
+      head.append(name, chip(state, state === 'pass' ? 'PASSED OFFLINE' : state === 'warn' ? 'RAN ONLINE' : 'FAILED'));
+      const meta = document.createElement('div'); meta.className = 'run-meta';
+      meta.textContent = 'sign ' + r.signMedianMs + ' ms · decrypt ' + r.decryptMs + ' ms · QR ' + r.payloadBytes + ' B · ' + fmtDate(r.savedAt);
+      div.append(head, meta);
+      log.append(div);
+    }
+  };
+
+  (async () => {
+    try { keyRecord = (await idbGet('session')) || null; } catch { keyRecord = null; }
+    renderKey();
+    try { const saved = localStorage.getItem('v2-last'); if (saved) { lastResult = JSON.parse(saved); renderResult(); } } catch {}
+    let db = null;
+    try { db = window.claude && (await window.claude.use('db')); } catch { db = null; }
+    if (db) {
+      store = { save: (run) => db.collection('v2runs').add(run) };
+      db.collection('v2runs').orderBy('savedAt', 'desc').limit(50).onSnapshot(renderLog, () => {});
+      return;
+    }
+    // Opened from the local server on the Wi-Fi: results go to tools/v2-offline-signing/results.jsonl.
+    const asSnap = (rows) => ({ empty: rows.length === 0, docs: rows.map((r) => ({ data: () => r })) });
+    const loadLocal = async () => {
+      const r = await origFetch('/api/v2-results', { cache: 'no-store' });
+      if (!r.ok) throw new Error('no local server');
+      return r.json();
+    };
+    try {
+      renderLog(asSnap(await loadLocal()));
+      store = {
+        save: async (run) => {
+          const p = await origFetch('/api/v2-results', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(run),
+          });
+          if (!p.ok) throw new Error('the server answered ' + p.status);
+          renderLog(asSnap(await loadLocal()));
+        },
+      };
+    } catch {
+      $('log').innerHTML = '<p class="empty">The shared log is unavailable in this view. The test itself still runs.</p>';
+    }
+  })();
+})();
+</script>
